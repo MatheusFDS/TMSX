@@ -1,0 +1,20 @@
+[
+  {
+    "id": 1,
+    "modelo": "VAN 1",
+    "valorVeiculo": "400",
+    "motoristaId": 1
+  },
+  {
+    "id": 2,
+    "modelo": "VAN 2",
+    "valorVeiculo": "430",
+    "motoristaId": 2
+  },
+  {
+    "id": 3,
+    "modelo": "VAN 3",
+    "valorVeiculo": "450",
+    "motoristaId": 3
+  }
+]

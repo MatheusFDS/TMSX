@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Paper, Typography, TextField, Button, List, ListItem, ListItemText, IconButton, MenuItem, Select, FormControl, InputLabel } from '@mui/material';
 import { Delete, Edit } from '@mui/icons-material';
-import { saveToLocalStorage, getFromLocalStorage } from '../utils/storage';
+import api from '../api';  // Importar a configuração da API
 
 const CadastroVeiculos = () => {
     const [veiculos, setVeiculos] = useState([]);
@@ -12,40 +12,52 @@ const CadastroVeiculos = () => {
     const [editId, setEditId] = useState(null);
 
     useEffect(() => {
-        const storedVeiculos = getFromLocalStorage('veiculos');
-        const storedMotoristas = getFromLocalStorage('motoristas');
-        if (storedVeiculos) setVeiculos(storedVeiculos);
-        if (storedMotoristas) setMotoristas(storedMotoristas);
+        const fetchData = async () => {
+            try {
+                const [veiculosRes, motoristasRes] = await Promise.all([
+                    api.get('/veiculos'),
+                    api.get('/motoristas')
+                ]);
+                setVeiculos(veiculosRes.data);
+                setMotoristas(motoristasRes.data);
+            } catch (error) {
+                console.error("Erro ao buscar veículos ou motoristas:", error);
+            }
+        };
+        fetchData();
     }, []);
 
-    const addOrUpdateVeiculo = () => {
+    const addOrUpdateVeiculo = async () => {
         if (editId) {
-            const updatedVeiculos = veiculos.map(veiculo =>
-                veiculo.id === editId ? { ...veiculo, modelo, valorVeiculo, motoristaId } : veiculo
-            );
-            setVeiculos(updatedVeiculos);
-            saveToLocalStorage('veiculos', updatedVeiculos);
-            setEditId(null);
+            try {
+                const updatedVeiculo = { id: editId, modelo, valorVeiculo, motoristaId };
+                await api.put(`/veiculos/${editId}`, updatedVeiculo);
+                setVeiculos(veiculos.map(veiculo => veiculo.id === editId ? updatedVeiculo : veiculo));
+                setEditId(null);
+            } catch (error) {
+                console.error("Erro ao atualizar veículo:", error);
+            }
         } else {
-            const novoVeiculo = {
-                id: veiculos.length + 1,
-                modelo,
-                valorVeiculo,
-                motoristaId
-            };
-            const updatedVeiculos = [...veiculos, novoVeiculo];
-            setVeiculos(updatedVeiculos);
-            saveToLocalStorage('veiculos', updatedVeiculos);
+            try {
+                const novoVeiculo = { id: veiculos.length + 1, modelo, valorVeiculo, motoristaId };
+                const response = await api.post('/veiculos', novoVeiculo);
+                setVeiculos([...veiculos, response.data]);
+            } catch (error) {
+                console.error("Erro ao adicionar veículo:", error);
+            }
         }
         setModelo('');
         setValorVeiculo('');
         setMotoristaId('');
     };
 
-    const deleteVeiculo = (id) => {
-        const updatedVeiculos = veiculos.filter(veiculo => veiculo.id !== id);
-        setVeiculos(updatedVeiculos);
-        saveToLocalStorage('veiculos', updatedVeiculos);
+    const deleteVeiculo = async (id) => {
+        try {
+            await api.delete(`/veiculos/${id}`);
+            setVeiculos(veiculos.filter(veiculo => veiculo.id !== id));
+        } catch (error) {
+            console.error("Erro ao deletar veículo:", error);
+        }
     };
 
     const editVeiculo = (veiculo) => {

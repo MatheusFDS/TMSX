@@ -1,20 +1,19 @@
 import React, { useState } from 'react';
 import { Paper, TextField, Button, Typography, Box, Link } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import { saveToLocalStorage, getFromLocalStorage } from '../utils/storage';
+import api from '../api';
 
 const Login = () => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const navigate = useNavigate();
 
-    const handleLogin = () => {
-        const users = getFromLocalStorage('users') || [];
-        const user = users.find(user => user.username === username && user.password === password);
-        if (user) {
-            saveToLocalStorage('user', { username });
+    const handleLogin = async () => {
+        try {
+            const response = await api.post('/login', { username, password });
+            localStorage.setItem('token', response.data.token);
             navigate('/');
-        } else {
+        } catch (error) {
             alert('Credenciais inválidas!');
         }
     };

@@ -1,0 +1,58 @@
+[
+  {
+    "id": 1,
+    "rangeInicio": "01000000",
+    "rangeFim": "01999999",
+    "valorDirecao": "20"
+  },
+  {
+    "id": 2,
+    "rangeInicio": "02000000",
+    "rangeFim": "02999999",
+    "valorDirecao": "20"
+  },
+  {
+    "id": 3,
+    "rangeInicio": "03000000",
+    "rangeFim": "03999999",
+    "valorDirecao": "20"
+  },
+  {
+    "id": 4,
+    "rangeInicio": "04000000",
+    "rangeFim": "04999999",
+    "valorDirecao": "20"
+  }
+  ,  {
+    "id": 5,
+    "rangeInicio": "05000000",
+    "rangeFim": "05999999",
+    "valorDirecao": "20"
+  }
+  ,
+  {
+    "id": 6,
+    "rangeInicio": "06000000",
+    "rangeFim": "06999999",
+    "valorDirecao": "20"
+  }
+  ,  {
+    "id": 7,
+    "rangeInicio": "07000000",
+    "rangeFim": "07999999",
+    "valorDirecao": "20"
+  }
+  ,  {
+    "id": 8,
+    "rangeInicio": "08000000",
+    "rangeFim": "08999999",
+    "valorDirecao": "20"
+  }
+  ,
+  {
+    "id": 9,
+    "rangeInicio": "09000000",
+    "rangeFim": "09999999",
+    "valorDirecao": "20"
+  }
+]

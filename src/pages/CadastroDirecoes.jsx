@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button, Typography, List, ListItem, ListItemText, Paper, TextField, Grid, IconButton } from '@mui/material';
 import { Delete, Edit } from '@mui/icons-material';
-import { saveToLocalStorage, getFromLocalStorage } from '../utils/storage';
+import api from '../api';  // Importar a configuração da API
 
 const CadastroDirecoes = () => {
     const [direcoes, setDirecoes] = useState([]);
@@ -11,35 +11,48 @@ const CadastroDirecoes = () => {
     const [editId, setEditId] = useState(null);
 
     useEffect(() => {
-        const storedDirecoes = getFromLocalStorage('direcoes');
-        if (storedDirecoes) {
-            setDirecoes(storedDirecoes);
-        }
+        const fetchDirecoes = async () => {
+            try {
+                const response = await api.get('/direcoes');
+                setDirecoes(response.data);
+            } catch (error) {
+                console.error("Erro ao buscar direções:", error);
+            }
+        };
+        fetchDirecoes();
     }, []);
 
-    const addOrUpdateDirecao = () => {
+    const addOrUpdateDirecao = async () => {
         if (editId) {
-            const updatedDirecoes = direcoes.map(direcao =>
-                direcao.id === editId ? { ...direcao, rangeInicio, rangeFim, valorDirecao } : direcao
-            );
-            setDirecoes(updatedDirecoes);
-            saveToLocalStorage('direcoes', updatedDirecoes);
-            setEditId(null);
+            try {
+                const updatedDirecao = { id: editId, rangeInicio, rangeFim, valorDirecao };
+                await api.put(`/direcoes/${editId}`, updatedDirecao);
+                setDirecoes(direcoes.map(direcao => direcao.id === editId ? updatedDirecao : direcao));
+                setEditId(null);
+            } catch (error) {
+                console.error("Erro ao atualizar direção:", error);
+            }
         } else {
-            const novaDirecao = { id: direcoes.length + 1, rangeInicio, rangeFim, valorDirecao };
-            const updatedDirecoes = [...direcoes, novaDirecao];
-            setDirecoes(updatedDirecoes);
-            saveToLocalStorage('direcoes', updatedDirecoes);
+            try {
+                const novaDirecao = { id: direcoes.length + 1, rangeInicio, rangeFim, valorDirecao };
+                const response = await api.post('/direcoes', novaDirecao);
+                setDirecoes([...direcoes, response.data]);
+            } catch (error) {
+                console.error("Erro ao adicionar direção:", error);
+            }
         }
         setRangeInicio('');
         setRangeFim('');
         setValorDirecao('');
     };
 
-    const deleteDirecao = (id) => {
-        const updatedDirecoes = direcoes.filter(direcao => direcao.id !== id);
-        setDirecoes(updatedDirecoes);
-        saveToLocalStorage('direcoes', updatedDirecoes);
+    const deleteDirecao = async (id) => {
+        try {
+            await api.delete(`/direcoes/${id}`);
+            setDirecoes(direcoes.filter(direcao => direcao.id !== id));
+        } catch (error) {
+            console.error("Erro ao deletar direção:", error);
+        }
     };
 
     const editDirecao = (direcao) => {

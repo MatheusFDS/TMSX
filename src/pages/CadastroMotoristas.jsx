@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Paper, Typography, TextField, Button, List, ListItem, ListItemText, IconButton } from '@mui/material';
 import { Delete, Edit } from '@mui/icons-material';
-import { saveToLocalStorage, getFromLocalStorage } from '../utils/storage';
+import api from '../api';  // Importar a configuração da API
 
 const CadastroMotoristas = () => {
     const [motoristas, setMotoristas] = useState([]);
@@ -9,34 +9,46 @@ const CadastroMotoristas = () => {
     const [editId, setEditId] = useState(null);
 
     useEffect(() => {
-        const storedMotoristas = getFromLocalStorage('motoristas');
-        if (storedMotoristas) setMotoristas(storedMotoristas);
+        const fetchMotoristas = async () => {
+            try {
+                const response = await api.get('/motoristas');
+                setMotoristas(response.data);
+            } catch (error) {
+                console.error("Erro ao buscar motoristas:", error);
+            }
+        };
+        fetchMotoristas();
     }, []);
 
-    const addOrUpdateMotorista = () => {
+    const addOrUpdateMotorista = async () => {
         if (editId) {
-            const updatedMotoristas = motoristas.map(motorista =>
-                motorista.id === editId ? { ...motorista, nome } : motorista
-            );
-            setMotoristas(updatedMotoristas);
-            saveToLocalStorage('motoristas', updatedMotoristas);
-            setEditId(null);
+            try {
+                const updatedMotorista = { id: editId, nome };
+                await api.put(`/motoristas/${editId}`, updatedMotorista);
+                setMotoristas(motoristas.map(motorista => motorista.id === editId ? updatedMotorista : motorista));
+                setEditId(null);
+            } catch (error) {
+                console.error("Erro ao atualizar motorista:", error);
+            }
         } else {
-            const novoMotorista = {
-                id: motoristas.length + 1,
-                nome
-            };
-            const updatedMotoristas = [...motoristas, novoMotorista];
-            setMotoristas(updatedMotoristas);
-            saveToLocalStorage('motoristas', updatedMotoristas);
+            try {
+                const novoMotorista = { id: motoristas.length + 1, nome };
+                const response = await api.post('/motoristas', novoMotorista);
+                setMotoristas([...motoristas, response.data]);
+            } catch (error) {
+                console.error("Erro ao adicionar motorista:", error);
+            }
         }
         setNome('');
     };
 
-    const deleteMotorista = (id) => {
-        const updatedMotoristas = motoristas.filter(motorista => motorista.id !== id);
-        setMotoristas(updatedMotoristas);
-        saveToLocalStorage('motoristas', updatedMotoristas);
+    const deleteMotorista = async (id) => {
+        try {
+            await api.delete(`/motoristas/${id}`);
+            setMotoristas(motoristas.filter(motorista => motorista.id !== id));
+        } catch (error) {
+            console.error("Erro ao deletar motorista:", error);
+        }
     };
 
     const editMotorista = (motorista) => {

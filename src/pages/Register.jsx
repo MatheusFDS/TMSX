@@ -1,28 +1,20 @@
 import React, { useState } from 'react';
-import { Paper, TextField, Button, Typography, Box } from '@mui/material';
+import { Paper, TextField, Button, Typography, Box, Link } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import { saveToLocalStorage, getFromLocalStorage } from '../utils/storage';
+import api from '../api';
 
 const Register = () => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
-    const [confirmPassword, setConfirmPassword] = useState('');
     const navigate = useNavigate();
 
-    const handleRegister = () => {
-        if (password !== confirmPassword) {
-            alert('As senhas não coincidem!');
-            return;
+    const handleRegister = async () => {
+        try {
+            await api.post('/register', { username, password });
+            navigate('/login');
+        } catch (error) {
+            alert('Erro ao registrar!');
         }
-        const users = getFromLocalStorage('users') || [];
-        if (users.find(user => user.username === username)) {
-            alert('Nome de usuário já existe!');
-            return;
-        }
-        const newUser = { username, password };
-        saveToLocalStorage('users', [...users, newUser]);
-        alert('Registro bem-sucedido!');
-        navigate('/login');
     };
 
     return (
@@ -48,18 +40,12 @@ const Register = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                 />
-                <TextField
-                    label="Confirm Password"
-                    variant="outlined"
-                    type="password"
-                    fullWidth
-                    margin="normal"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                />
                 <Button variant="contained" color="primary" fullWidth onClick={handleRegister}>
                     Registrar
                 </Button>
+                <Typography variant="body2" sx={{ marginTop: 2 }}>
+                    Já tem uma conta? <Link href="/login">Login</Link>
+                </Typography>
             </Paper>
         </Box>
     );

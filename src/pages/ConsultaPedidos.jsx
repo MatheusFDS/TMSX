@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button, Typography, List, ListItem, ListItemText, Paper, TextField, Grid, IconButton } from '@mui/material';
 import { Delete, Edit } from '@mui/icons-material';
-import { saveToLocalStorage, getFromLocalStorage } from '../utils/storage';
+import api from '../api';  // Importar a configuração da API
 
 const ConsultaPedidos = () => {
     const [pedidos, setPedidos] = useState([]);
@@ -14,34 +14,35 @@ const ConsultaPedidos = () => {
     const [editId, setEditId] = useState(null);
 
     useEffect(() => {
-        const storedPedidos = getFromLocalStorage('pedidos');
-        if (storedPedidos) {
-            setPedidos(storedPedidos);
-        }
+        const fetchPedidos = async () => {
+            try {
+                const response = await api.get('/pedidos');
+                setPedidos(response.data);
+            } catch (error) {
+                console.error("Erro ao buscar pedidos:", error);
+            }
+        };
+        fetchPedidos();
     }, []);
 
-    const addOrUpdatePedido = () => {
+    const addOrUpdatePedido = async () => {
         if (editId) {
-            const updatedPedidos = pedidos.map(pedido => 
-                pedido.id === editId ? { ...pedido, numero, cliente, cep, valor, peso } : pedido
-            );
-            setPedidos(updatedPedidos);
-            saveToLocalStorage('pedidos', updatedPedidos);
-            setEditId(null);
+            try {
+                const updatedPedido = { id: editId, numero, cliente, cep, valor, peso, dataFaturamento: new Date().toISOString().split('T')[0], status: 'Pendente' };
+                await api.put(`/pedidos/${editId}`, updatedPedido);
+                setPedidos(pedidos.map(p => p.id === editId ? updatedPedido : p));
+                setEditId(null);
+            } catch (error) {
+                console.error("Erro ao atualizar pedido:", error);
+            }
         } else {
-            const novoPedido = {
-                id: pedidos.length + 1,
-                numero,
-                cliente,
-                cep,
-                valor,
-                peso,
-                dataFaturamento: new Date().toISOString().split('T')[0],
-                status: 'Pendente'
-            };
-            const updatedPedidos = [...pedidos, novoPedido];
-            setPedidos(updatedPedidos);
-            saveToLocalStorage('pedidos', updatedPedidos);
+            try {
+                const novoPedido = { id: pedidos.length > 0 ? Math.max(...pedidos.map(p => p.id)) + 1 : 1, numero, cliente, cep, valor, peso, dataFaturamento: new Date().toISOString().split('T')[0], status: 'Pendente' };
+                const response = await api.post('/pedidos', novoPedido);
+                setPedidos([...pedidos, response.data]);
+            } catch (error) {
+                console.error("Erro ao adicionar pedido:", error);
+            }
         }
         setNumero('');
         setCliente('');
@@ -50,10 +51,13 @@ const ConsultaPedidos = () => {
         setPeso('');
     };
 
-    const deletePedido = (id) => {
-        const updatedPedidos = pedidos.filter(pedido => pedido.id !== id);
-        setPedidos(updatedPedidos);
-        saveToLocalStorage('pedidos', updatedPedidos);
+    const deletePedido = async (id) => {
+        try {
+            await api.delete(`/pedidos/${id}`);
+            setPedidos(pedidos.filter(p => p.id !== id));
+        } catch (error) {
+            console.error("Erro ao deletar pedido:", error);
+        }
     };
 
     const editPedido = (pedido) => {
@@ -65,10 +69,8 @@ const ConsultaPedidos = () => {
         setPeso(pedido.peso);
     };
 
-    const filteredPedidos = pedidos.filter(pedido =>
-        (pedido.numero && pedido.numero.includes(filtro)) ||
-        (pedido.cliente && pedido.cliente.includes(filtro)) ||
-        (pedido.cep && pedido.cep.includes(filtro))
+    const filteredPedidos = pedidos.filter(p =>
+        p.numero.includes(filtro) || p.cliente.includes(filtro) || p.cep.includes(filtro)
     );
 
     return (
@@ -144,7 +146,7 @@ const ConsultaPedidos = () => {
                     <ListItem key={pedido.id} divider>
                         <ListItemText
                             primary={`Pedido ${pedido.numero} - Cliente: ${pedido.cliente}`}
-                            secondary={`Data de Faturamento: ${pedido.dataFaturamento}, Status: ${pedido.status}, CEP: ${pedido.cep}, Valor: ${pedido.valor}, Peso: ${pedido.peso}`}
+                            secondary={`Data de Faturamento: ${pedido.dataFaturamento}, Status: ${pedido.status}, CEP: ${pedido.cep}, Valor: ${pedido.valor}, Peso: ${pedido.peso}, Rota ID: ${pedido.roteiroId || 'N/A'}`}
                         />
                         <IconButton edge="end" aria-label="edit" onClick={() => editPedido(pedido)}>
                             <Edit />

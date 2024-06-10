@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Paper, Typography, List, ListItem, ListItemText, IconButton, Button, Dialog, DialogTitle, DialogContent, DialogActions, Tabs, Tab, TextField, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
-import { Delete, Edit, Map } from '@mui/icons-material'; // Importa o ícone Map
-import { getFromLocalStorage, saveToLocalStorage } from '../utils/storage';
+import { Delete, Edit, Map } from '@mui/icons-material';
+import api from '../api';  // Importar a configuração da API
 import { TabPanel } from '../components/TabPanel';
 
 const ConsultaRotas = () => {
@@ -13,12 +13,21 @@ const ConsultaRotas = () => {
     const [veiculos, setVeiculos] = useState([]);
 
     useEffect(() => {
-        const storedRoteiros = getFromLocalStorage('roteiros') || [];
-        const storedMotoristas = getFromLocalStorage('motoristas') || [];
-        const storedVeiculos = getFromLocalStorage('veiculos') || [];
-        setRoteiros(storedRoteiros);
-        setMotoristas(storedMotoristas);
-        setVeiculos(storedVeiculos);
+        const fetchData = async () => {
+            try {
+                const [roteirosRes, motoristasRes, veiculosRes] = await Promise.all([
+                    api.get('/roteiros'),
+                    api.get('/motoristas'),
+                    api.get('/veiculos')
+                ]);
+                setRoteiros(roteirosRes.data);
+                setMotoristas(motoristasRes.data);
+                setVeiculos(veiculosRes.data);
+            } catch (error) {
+                console.error("Erro ao buscar dados:", error);
+            }
+        };
+        fetchData();
     }, []);
 
     const handleOpenDialog = (roteiro) => {
@@ -35,7 +44,7 @@ const ConsultaRotas = () => {
         setTabIndex(newValue);
     };
 
-    const handleRemovePedido = (pedidoId) => {
+    const handleRemovePedido = async (pedidoId) => {
         const updatedRoteiro = {
             ...selectedRoteiro,
             pedidos: selectedRoteiro.pedidos.filter(pedido => pedido.id !== pedidoId)
@@ -46,12 +55,13 @@ const ConsultaRotas = () => {
             roteiro.id === updatedRoteiro.id ? updatedRoteiro : roteiro
         );
         setRoteiros(updatedRoteiros);
-        saveToLocalStorage('roteiros', updatedRoteiros);
 
-        const allPedidos = (getFromLocalStorage('pedidos') || []).map(pedido =>
-            pedido.id === pedidoId ? { ...pedido, status: 'Retornada' } : pedido
-        );
-        saveToLocalStorage('pedidos', allPedidos);
+        try {
+            await api.put(`/roteiros/${updatedRoteiro.id}`, updatedRoteiro);
+            await api.put(`/pedidos/${pedidoId}`, { status: 'Retornada' });
+        } catch (error) {
+            console.error("Erro ao atualizar pedido:", error);
+        }
     };
 
     const handleChange = (e) => {
@@ -59,7 +69,7 @@ const ConsultaRotas = () => {
         setSelectedRoteiro({ ...selectedRoteiro, [name]: value });
     };
 
-    const handleStatusChange = () => {
+    const handleStatusChange = async () => {
         const newStatus = selectedRoteiro.status === 'Em rota' ? 'Rota Finalizada' : 'Em rota';
         const updatedRoteiro = { ...selectedRoteiro, status: newStatus };
 
@@ -67,47 +77,60 @@ const ConsultaRotas = () => {
             roteiro.id === updatedRoteiro.id ? updatedRoteiro : roteiro
         );
         setRoteiros(updatedRoteiros);
-        saveToLocalStorage('roteiros', updatedRoteiros);
 
         if (newStatus === 'Rota Finalizada') {
             const updatedPedidos = selectedRoteiro.pedidos.map(pedido => ({
                 ...pedido,
                 status: 'Entregue'
             }));
-            const allPedidos = (getFromLocalStorage('pedidos') || []).map(pedido =>
-                updatedPedidos.find(p => p.id === pedido.id) || pedido
-            );
-            saveToLocalStorage('pedidos', allPedidos);
-            updatedRoteiro.dataFim = new Date().toISOString(); // Atualiza a data de finalização
+            try {
+                await api.put(`/roteiros/${updatedRoteiro.id}`, updatedRoteiro);
+                for (let pedido of updatedPedidos) {
+                    await api.put(`/pedidos/${pedido.id}`, pedido);
+                }
+                updatedRoteiro.dataFim = new Date().toISOString();
+            } catch (error) {
+                console.error("Erro ao atualizar pedidos:", error);
+            }
         }
 
         handleCloseDialog();
     };
 
-    const handleSaveChanges = () => {
-        const updatedRoteiros = roteiros.map(roteiro => 
-            roteiro.id === selectedRoteiro.id ? selectedRoteiro : roteiro
-        );
-        setRoteiros(updatedRoteiros);
-        saveToLocalStorage('roteiros', updatedRoteiros);
-        handleCloseDialog();
+    const handleSaveChanges = async () => {
+        try {
+            await api.put(`/roteiros/${selectedRoteiro.id}`, selectedRoteiro);
+            const updatedRoteiros = roteiros.map(roteiro => 
+                roteiro.id === selectedRoteiro.id ? selectedRoteiro : roteiro
+            );
+            setRoteiros(updatedRoteiros);
+            handleCloseDialog();
+        } catch (error) {
+            console.error("Erro ao salvar alterações:", error);
+        }
     };
 
-    const handleDeleteRoteiro = (id) => {
+    const handleDeleteRoteiro = async (id) => {
         const rotaParaExcluir = roteiros.find(roteiro => roteiro.id === id);
 
         if (rotaParaExcluir) {
-            const allPedidos = getFromLocalStorage('pedidos') || [];
-            const updatedPedidos = allPedidos.map(pedido =>
-                rotaParaExcluir.pedidos.some(p => p.id === pedido.id)
-                    ? { ...pedido, status: 'Retornada' }
-                    : pedido
-            );
-            saveToLocalStorage('pedidos', updatedPedidos);
+            try {
+                console.log("Excluindo roteiro:", rotaParaExcluir);
+                await api.delete(`/roteiros/${id}`);
+                console.log("Roteiro excluído:", rotaParaExcluir);
 
-            const updatedRoteiros = roteiros.filter(roteiro => roteiro.id !== id);
-            setRoteiros(updatedRoteiros);
-            saveToLocalStorage('roteiros', updatedRoteiros);
+                for (let pedido of rotaParaExcluir.pedidos) {
+                    console.log("Atualizando pedido:", pedido);
+                    await api.put(`/pedidos/${pedido.id}`, { status: 'Retornada' });
+                    console.log("Pedido atualizado:", pedido);
+                }
+
+                const updatedRoteiros = roteiros.filter(roteiro => roteiro.id !== id);
+                setRoteiros(updatedRoteiros);
+                console.log("Roteiros atualizados:", updatedRoteiros);
+            } catch (error) {
+                console.error("Erro ao excluir roteiro:", error);
+            }
         }
     };
 

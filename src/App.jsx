@@ -8,7 +8,7 @@ import CadastroVeiculos from './pages/CadastroVeiculos';
 import CentralControle from './pages/CentralControle';
 import Roteirizacao from './pages/Roteirizacao';
 import ConsultaRotas from './pages/ConsultaRotas';
-import FechamentoFrete from './pages/FechamentoFrete'; // Adicione esta linha
+import FechamentoFrete from './pages/FechamentoFrete';
 import Navbar from './components/Navbar';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -16,11 +16,13 @@ import PrivateRoute from './components/PrivateRoute';
 import theme from './theme';
 
 function App() {
+    const isAuthenticated = !!localStorage.getItem('token');
+
     return (
         <ThemeProvider theme={theme}>
             <CssBaseline />
             <Router>
-                <Navbar />
+                {isAuthenticated && <Navbar />}
                 <Container maxWidth="lg">
                     <Routes>
                         <Route path="/" element={<PrivateRoute element={<CentralControle />} />} />
@@ -30,7 +32,7 @@ function App() {
                         <Route path="/cadastro-veiculos" element={<PrivateRoute element={<CadastroVeiculos />} />} />
                         <Route path="/roteirizacao" element={<PrivateRoute element={<Roteirizacao />} />} />
                         <Route path="/consulta-rotas" element={<PrivateRoute element={<ConsultaRotas />} />} />
-                        <Route path="/fechamento-frete" element={<PrivateRoute element={<FechamentoFrete />} />} /> {/* Adicione esta linha */}
+                        <Route path="/fechamento-frete" element={<PrivateRoute element={<FechamentoFrete />} />} />
                         <Route path="/login" element={<Login />} />
                         <Route path="/register" element={<Register />} />
                     </Routes>

@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
 import { AppBar, Toolbar, Typography, Button, Menu, MenuItem } from '@mui/material';
 import { Link, useNavigate } from 'react-router-dom';
-import { getFromLocalStorage, removeFromLocalStorage } from '../utils/storage';
 
 const Navbar = () => {
     const navigate = useNavigate();
-    const user = getFromLocalStorage('user');
+    const token = localStorage.getItem('token');
 
     const [anchorEl, setAnchorEl] = useState(null);
     const [menu, setMenu] = useState('');
@@ -21,7 +20,7 @@ const Navbar = () => {
     };
 
     const handleLogout = () => {
-        removeFromLocalStorage('user');
+        localStorage.removeItem('token');
         navigate('/login');
     };
 
@@ -34,7 +33,7 @@ const Navbar = () => {
                 <Button color="inherit" component={Link} to="/">
                     Home
                 </Button>
-                {user && (
+                {token && (
                     <>
                         <Button color="inherit" component={Link} to="/consulta-pedidos">
                             Pedidos
@@ -80,7 +79,7 @@ const Navbar = () => {
                         </Button>
                     </>
                 )}
-                {!user && (
+                {!token && (
                     <>
                         <Button color="inherit" component={Link} to="/login">
                             Login

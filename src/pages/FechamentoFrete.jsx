@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Paper, Typography, List, ListItem, ListItemText, Button, Dialog, DialogTitle, DialogContent, DialogActions, Accordion, AccordionSummary, AccordionDetails, TextField, MenuItem, Select, FormControl, InputLabel } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import { getFromLocalStorage, saveToLocalStorage } from '../utils/storage';
+import api from '../api'; // Importar a configuração da API
 
 const FechamentoFrete = () => {
     const [roteiros, setRoteiros] = useState([]);
@@ -11,15 +11,23 @@ const FechamentoFrete = () => {
     const [statusFiltro, setStatusFiltro] = useState('Pendentes');
     const [searchTerm, setSearchTerm] = useState('');
 
-    useEffect(() => {
-        const storedRoteiros = getFromLocalStorage('roteiros') || [];
-        setRoteiros(storedRoteiros);
+    const fetchRoteiros = useCallback(async () => {
+        try {
+            const response = await api.get('/roteiros');
+            setRoteiros(response.data);
+        } catch (error) {
+            console.error("Erro ao buscar roteiros:", error);
+        }
     }, []);
 
     useEffect(() => {
+        fetchRoteiros();
+    }, [fetchRoteiros]);
+
+    const filtrarRoteiros = useCallback(() => {
         const finalizados = roteiros.filter(roteiro => 
             roteiro.status === 'Rota Finalizada' && 
-            (statusFiltro === 'Todos' || roteiro.statusPagamento === (statusFiltro === 'Pendentes' ? 'Pendente' : 'Pago'))
+            (statusFiltro === 'Todos' || (statusFiltro === 'Pendentes' && roteiro.statusPagamento === 'Pendente') || (statusFiltro === 'Pago' && roteiro.statusPagamento === 'Pago'))
         );
 
         const agrupados = finalizados.reduce((acc, roteiro) => {
@@ -33,6 +41,10 @@ const FechamentoFrete = () => {
         setAgrupados(agrupados);
     }, [roteiros, statusFiltro]);
 
+    useEffect(() => {
+        filtrarRoteiros();
+    }, [roteiros, statusFiltro, filtrarRoteiros]);
+
     const handleOpenDialog = (motorista) => {
         setSelectedMotorista(motorista);
         setOpenDialog(true);
@@ -43,7 +55,7 @@ const FechamentoFrete = () => {
         setSelectedMotorista(null);
     };
 
-    const handlePagar = (motorista) => {
+    const handlePagar = async (motorista) => {
         const updatedRoteiros = roteiros.map(roteiro => {
             if (roteiro.motorista === motorista) {
                 return { ...roteiro, statusPagamento: 'Pago' };
@@ -52,13 +64,25 @@ const FechamentoFrete = () => {
         });
 
         setRoteiros(updatedRoteiros);
-        saveToLocalStorage('roteiros', updatedRoteiros);
+        try {
+            for (let roteiro of updatedRoteiros.filter(roteiro => roteiro.motorista === motorista)) {
+                await api.put(`/roteiros/${roteiro.id}`, roteiro);
+            }
+        } catch (error) {
+            console.error("Erro ao atualizar status de pagamento:", error);
+        }
         handleCloseDialog();
     };
 
     const handleSearch = (event) => {
         const searchTerm = event.target.value.toLowerCase();
         setSearchTerm(searchTerm);
+
+        if (searchTerm.trim() === '') {
+            filtrarRoteiros();
+            return;
+        }
+
         const filtered = roteiros.filter(roteiro => {
             return (
                 roteiro.motorista.toLowerCase().includes(searchTerm) ||
@@ -68,7 +92,16 @@ const FechamentoFrete = () => {
                 roteiro.id.toString().includes(searchTerm)
             );
         });
-        setAgrupados(filtered);
+
+        const agrupadosFiltrados = filtered.reduce((acc, roteiro) => {
+            if (!acc[roteiro.motorista]) {
+                acc[roteiro.motorista] = [];
+            }
+            acc[roteiro.motorista].push(roteiro);
+            return acc;
+        }, {});
+
+        setAgrupados(agrupadosFiltrados);
     };
 
     return (

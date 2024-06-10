@@ -1,0 +1,90 @@
+[
+  {
+    "id": 3,
+    "motorista": "Nivaldo",
+    "veiculo": "VAN 3",
+    "valorFrete": 470,
+    "pedidos": [
+      {
+        "id": 7,
+        "numero": "223",
+        "cliente": "MASTER",
+        "cep": "04399999",
+        "valor": "1200",
+        "peso": "200",
+        "dataFaturamento": "2024-06-10",
+        "status": "Retornada"
+      },
+      {
+        "id": 8,
+        "numero": "224",
+        "cliente": "MASTER",
+        "cep": "04299999",
+        "valor": "1200",
+        "peso": "200",
+        "dataFaturamento": "2024-06-10",
+        "status": "Retornada"
+      },
+      {
+        "id": 9,
+        "numero": "225",
+        "cliente": "MASTER",
+        "cep": "04199999",
+        "valor": "1200",
+        "peso": "200",
+        "dataFaturamento": "2024-06-10",
+        "status": "Retornada"
+      }
+    ],
+    "totalPeso": 600,
+    "totalValor": 3600,
+    "dataInicio": "2024-06-10T05:44:55.518Z",
+    "status": "Rota Finalizada",
+    "statusPagamento": "Pago"
+  },
+  {
+    "id": 2,
+    "motorista": "Paulo",
+    "veiculo": "VAN 1",
+    "valorFrete": 420,
+    "pedidos": [
+      {
+        "id": 1,
+        "numero": "123",
+        "cliente": "MASTER",
+        "cep": "02199999",
+        "valor": "1200",
+        "peso": "200",
+        "dataFaturamento": "2024-06-10",
+        "status": "Retornada",
+        "roteiroId": 1
+      },
+      {
+        "id": 2,
+        "numero": "124",
+        "cliente": "MASTER",
+        "cep": "02199999",
+        "valor": "1200",
+        "peso": "200",
+        "dataFaturamento": "2024-06-10",
+        "status": "Retornada",
+        "roteiroId": 1
+      },
+      {
+        "id": 3,
+        "numero": "125",
+        "cliente": "MASTER",
+        "cep": "02199999",
+        "valor": "1200",
+        "peso": "200",
+        "dataFaturamento": "2024-06-10",
+        "status": "Retornada",
+        "roteiroId": 1
+      }
+    ],
+    "totalPeso": 600,
+    "totalValor": 3600,
+    "dataInicio": "2024-06-10T05:50:58.142Z",
+    "status": "Em rota"
+  }
+]

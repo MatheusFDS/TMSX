@@ -1,9 +1,43 @@
 import React, { useState, useEffect } from 'react';
 import { Typography, Paper, Grid, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Select, MenuItem, FormControl, InputLabel, IconButton, Tabs, Tab, Box } from '@mui/material';
-import { getFromLocalStorage, saveToLocalStorage } from '../utils/storage';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import InfoIcon from '@mui/icons-material/Info';
 import DeleteIcon from '@mui/icons-material/Delete';
+import api from '../api';
+
+const dividirPedidosEmBlocos = (pedidos, direcoes, pedidosAtribuidos) => {
+    const blocos = {};
+
+    direcoes.forEach(direcao => {
+        blocos[direcao.id] = {
+            direcao,
+            pedidos: [],
+            totalPeso: 0,
+            totalValor: 0,
+            valorDirecao: parseFloat(direcao.valorDirecao) || 0
+        };
+    });
+
+    pedidos.forEach(pedido => {
+        if (pedido.cep && !pedidosAtribuidos.includes(pedido.id)) {
+            const cep = parseInt(pedido.cep, 10);
+            const direcaoCorrespondente = direcoes.find(direcao => {
+                const rangeInicio = parseInt(direcao.rangeInicio, 10);
+                const rangeFim = parseInt(direcao.rangeFim, 10);
+                return cep >= rangeInicio && cep <= rangeFim;
+            });
+
+            if (direcaoCorrespondente) {
+                const bloco = blocos[direcaoCorrespondente.id];
+                bloco.pedidos.push(pedido);
+                bloco.totalPeso += parseFloat(pedido.peso) || 0;
+                bloco.totalValor += parseFloat(pedido.valor) || 0;
+            }
+        }
+    });
+
+    return blocos;
+};
 
 const Roteirizacao = () => {
     const [pedidos, setPedidos] = useState([]);
@@ -23,26 +57,36 @@ const Roteirizacao = () => {
     const [selectedBloco, setSelectedBloco] = useState(null);
     const [selectedPedido, setSelectedPedido] = useState(null);
     const [tabIndex, setTabIndex] = useState(0);
+    const [pedidosAtribuidos, setPedidosAtribuidos] = useState([]);
 
     useEffect(() => {
-        const storedPedidos = getFromLocalStorage('pedidos');
-        const storedDirecoes = getFromLocalStorage('direcoes');
-        const storedMotoristas = getFromLocalStorage('motoristas');
-        const storedVeiculos = getFromLocalStorage('veiculos');
-        const storedRoteiros = getFromLocalStorage('roteiros');
-        if (storedPedidos) setPedidos(storedPedidos.filter(pedido => pedido.status === 'Pendente' || pedido.status === 'Retornada'));
-        if (storedDirecoes) setDirecoes(storedDirecoes);
-        if (storedMotoristas) setMotoristas(storedMotoristas);
-        if (storedVeiculos) setVeiculos(storedVeiculos);
-        if (storedRoteiros) setRoteiros(storedRoteiros);
+        const fetchData = async () => {
+            try {
+                const storedPedidos = (await api.get('/pedidos')).data;
+                const storedDirecoes = (await api.get('/direcoes')).data;
+                const storedMotoristas = (await api.get('/motoristas')).data;
+                const storedVeiculos = (await api.get('/veiculos')).data;
+                const storedRoteiros = (await api.get('/roteiros')).data;
+
+                setPedidos(storedPedidos.filter(pedido => pedido.status === 'Pendente' || pedido.status === 'Retornada'));
+                setDirecoes(storedDirecoes);
+                setMotoristas(storedMotoristas);
+                setVeiculos(storedVeiculos);
+                setRoteiros(storedRoteiros);
+            } catch (error) {
+                console.error('Erro ao buscar dados', error);
+            }
+        };
+
+        fetchData();
     }, []);
 
     useEffect(() => {
         if (pedidos.length > 0 && direcoes.length > 0) {
-            const novosBlocos = dividirPedidosEmBlocos(pedidos, direcoes);
+            const novosBlocos = dividirPedidosEmBlocos(pedidos, direcoes, pedidosAtribuidos);
             setBlocos(novosBlocos);
         }
-    }, [pedidos, direcoes]);
+    }, [pedidos, direcoes, pedidosAtribuidos]);
 
     useEffect(() => {
         if (motoristaSelecionado) {
@@ -63,40 +107,6 @@ const Roteirizacao = () => {
     useEffect(() => {
         setTotalFrete(parseFloat(valorVeiculo) + parseFloat(valorDirecao) + parseFloat(valorAdicional) + parseFloat(valorPedagio));
     }, [valorVeiculo, valorDirecao, valorAdicional, valorPedagio]);
-
-    const dividirPedidosEmBlocos = (pedidos, direcoes) => {
-        const blocos = {};
-
-        direcoes.forEach(direcao => {
-            blocos[direcao.id] = {
-                direcao,
-                pedidos: [],
-                totalPeso: 0,
-                totalValor: 0,
-                valorDirecao: parseFloat(direcao.valorDirecao) || 0
-            };
-        });
-
-        pedidos.forEach(pedido => {
-            if (pedido.cep) {
-                const cep = parseInt(pedido.cep, 10);
-                const direcaoCorrespondente = direcoes.find(direcao => {
-                    const rangeInicio = parseInt(direcao.rangeInicio, 10);
-                    const rangeFim = parseInt(direcao.rangeFim, 10);
-                    return cep >= rangeInicio && cep <= rangeFim;
-                });
-
-                if (direcaoCorrespondente) {
-                    const bloco = blocos[direcaoCorrespondente.id];
-                    bloco.pedidos.push(pedido);
-                    bloco.totalPeso += parseFloat(pedido.peso) || 0;
-                    bloco.totalValor += parseFloat(pedido.valor) || 0;
-                }
-            }
-        });
-
-        return blocos;
-    };
 
     const onDragEnd = (result) => {
         const { source, destination } = result;
@@ -126,13 +136,6 @@ const Roteirizacao = () => {
             [source.droppableId]: sourceBloco,
             [destination.droppableId]: destBloco
         });
-
-        const updatedPedidos = Object.values({
-            ...blocos,
-            [source.droppableId]: sourceBloco,
-            [destination.droppableId]: destBloco
-        }).flatMap(bloco => bloco.pedidos);
-        saveToLocalStorage('pedidos', updatedPedidos);
     };
 
     const handleGenerateRoteiro = (blocoId) => {
@@ -145,20 +148,9 @@ const Roteirizacao = () => {
         setOpenDialog(false);
     };
 
-    const handleConfirmRoteiro = () => {
-        const updatedPedidos = pedidos.map(pedido => {
-            if (selectedBloco.pedidos.find(p => p.id === pedido.id)) {
-                return { ...pedido, status: 'Em rota de entrega' };
-            }
-            return pedido;
-        });
-
-        setPedidos(updatedPedidos);
-        saveToLocalStorage('pedidos', updatedPedidos);
-
-        const storedRoteiros = getFromLocalStorage('roteiros') || [];
+    const handleConfirmRoteiro = async () => {
         const novoRoteiro = {
-            id: storedRoteiros.length + 1,
+            id: roteiros.length + 1,
             motorista: motoristaSelecionado,
             veiculo,
             valorFrete: totalFrete,
@@ -168,9 +160,30 @@ const Roteirizacao = () => {
             dataInicio: new Date().toISOString(),
             status: 'Em rota'
         };
-        saveToLocalStorage('roteiros', [...storedRoteiros, novoRoteiro]);
 
-        setOpenDialog(false);
+        try {
+            const response = await api.post('/roteiros', novoRoteiro);
+            const updatedPedidos = selectedBloco.pedidos.map(pedido => ({
+                ...pedido,
+                status: 'Em rota de entrega',
+                roteiroId: response.data.id
+            }));
+
+            await Promise.all(updatedPedidos.map(pedido => api.put(`/pedidos/${pedido.id}`, pedido)));
+
+            setPedidos(pedidos.map(pedido => {
+                if (selectedBloco.pedidos.find(p => p.id === pedido.id)) {
+                    return { ...pedido, status: 'Em rota de entrega', roteiroId: response.data.id };
+                }
+                return pedido;
+            }));
+
+            setPedidosAtribuidos([...pedidosAtribuidos, ...selectedBloco.pedidos.map(p => p.id)]);
+            setRoteiros([...roteiros, response.data]);
+            setOpenDialog(false);
+        } catch (error) {
+            console.error('Erro ao salvar o roteiro:', error);
+        }
     };
 
     const handlePedidoDetails = (pedido) => {
@@ -192,11 +205,10 @@ const Roteirizacao = () => {
 
         setSelectedBloco(updatedBloco);
 
-        const updatedPedidos = pedidos.map(pedido => 
+        const updatedPedidos = pedidos.map(pedido =>
             pedido.id === pedidoId ? { ...pedido, status: 'Pendente' } : pedido
         );
         setPedidos(updatedPedidos);
-        saveToLocalStorage('pedidos', updatedPedidos);
     };
 
     const handleTabChange = (event, newValue) => {
